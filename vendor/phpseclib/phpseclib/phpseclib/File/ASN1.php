@@ -144,6 +144,16 @@ class ASN1
     var $filters;
 
     /**
+     * Current Location of most recent ASN.1 encode process
+     *
+     * Useful for debug purposes
+     *
+     * @var array
+     * @see self::encode_der()
+     */
+    var $location;
+
+    /**
      * Type mapping table for the ANY type.
      *
      * Structured or unknown types are mapped to a \phpseclib\File\ASN1\Element.
@@ -807,7 +817,11 @@ class ASN1
                     $temp = new BigInteger($decoded['content'], -256);
                 }
                 if (isset($mapping['mapping'])) {
-                    $temp = (int) $temp->toString();
+                    $temp = $temp->toString();
+                    if (strlen($temp) > 1) {
+                        return false;
+                    }
+                    $temp = (int) $temp;
                     return isset($mapping['mapping'][$temp]) ?
                         $mapping['mapping'][$temp] :
                         false;
@@ -1158,6 +1172,10 @@ class ASN1
      */
     function _decodeOID($content)
     {
+        if (!defined('PHP_INT_SIZE')) {
+            define('PHP_INT_SIZE', 4);
+        }
+
         static $eighty;
         if (!$eighty) {
             $eighty = new BigInteger(80);
@@ -1166,19 +1184,32 @@ class ASN1
         $oid = array();
         $pos = 0;
         $len = strlen($content);
+        // see https://github.com/openjdk/jdk/blob/2deb318c9f047ec5a4b160d66a4b52f93688ec42/src/java.base/share/classes/sun/security/util/ObjectIdentifier.java#L55
+        if ($len > 128) {
+            //user_error('Object Identifier size is limited to 128 bytes');
+            return false;
+        }
 
         if (ord($content[$len - 1]) & 0x80) {
             return false;
         }
 
         $n = new BigInteger();
+        $subn = $numBytes = 0;
         while ($pos < $len) {
             $temp = ord($content[$pos++]);
-            $n = $n->bitwise_leftShift(7);
-            $n = $n->bitwise_or(new BigInteger($temp & 0x7F));
-            if (~$temp & 0x80) {
-                $oid[] = $n;
-                $n = new BigInteger();
+            $subn <<= 7;
+            $subn |= ($temp & 0x7F);
+            $numBytes++;
+            $endByte = ~$temp & 0x80;
+            if ($numBytes === PHP_INT_SIZE || $endByte) {
+                $n = $n->bitwise_leftShift($numBytes * 7);
+                $n = $n->bitwise_or(new BigInteger($subn));
+                $subn = $numBytes = 0;
+                if ($endByte) {
+                    $oid[] = $n;
+                    $n = new BigInteger();
+                }
             }
         }
         $part1 = array_shift($oid);
@@ -1431,7 +1462,7 @@ class ASN1
                         return false;
                     }
                     break;
-                case ($c & 0x80000000) != 0:
+                case ($c & (PHP_INT_SIZE == 8 ? 0x80000000 : (1 << 31))) != 0:
                     return false;
                 case $c >= 0x04000000:
                     $v .= chr(0x80 | ($c & 0x3F));

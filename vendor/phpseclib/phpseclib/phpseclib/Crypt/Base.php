@@ -500,6 +500,51 @@ abstract class Base
         }
 
         $this->_setEngine();
+
+        // Determining whether inline crypting can be used by the cipher
+        if ($this->use_inline_crypt !== false) {
+            $this->use_inline_crypt = version_compare(PHP_VERSION, '5.3.0') >= 0 || function_exists('create_function');
+        }
+
+        if (!defined('PHP_INT_SIZE')) {
+            define('PHP_INT_SIZE', 4);
+        }
+
+        if (!defined('CRYPT_BASE_USE_REG_INTVAL')) {
+            switch (true) {
+                // PHP 8.5, per https://www.php.net/manual/en/migration85.incompatible.php, now emits a warning
+                // "when casting floats (or strings that look like floats) to int if they cannot be represented as one"
+                case PHP_VERSION_ID >= 80500 && PHP_INT_SIZE == 4:
+                    define('CRYPT_BASE_USE_REG_INTVAL', false);
+                    break;
+                // PHP_OS & "\xDF\xDF\xDF" == strtoupper(substr(PHP_OS, 0, 3)), but a lot faster
+                case (PHP_OS & "\xDF\xDF\xDF") === 'WIN':
+                case !function_exists('php_uname'):
+                case !is_string(php_uname('m')):
+                case (php_uname('m') & "\xDF\xDF\xDF") != 'ARM':
+                case PHP_INT_SIZE == 8:
+                    define('CRYPT_BASE_USE_REG_INTVAL', true);
+                    break;
+                case (php_uname('m') & "\xDF\xDF\xDF") == 'ARM':
+                    switch (true) {
+                        /* PHP 7.0.0 introduced a bug that affected 32-bit ARM processors:
+
+                           https://github.com/php/php-src/commit/716da71446ebbd40fa6cf2cea8a4b70f504cc3cd
+
+                           altho the changelogs make no mention of it, this bug was fixed with this commit:
+
+                           https://github.com/php/php-src/commit/c1729272b17a1fe893d1a54e423d3b71470f3ee8
+
+                           affected versions of PHP are: 7.0.x, 7.1.0 - 7.1.23 and 7.2.0 - 7.2.11 */
+                        case PHP_VERSION_ID >= 70000 && PHP_VERSION_ID <= 70123:
+                        case PHP_VERSION_ID >= 70200 && PHP_VERSION_ID <= 70211:
+                            define('CRYPT_BASE_USE_REG_INTVAL', false);
+                            break;
+                        default:
+                            define('CRYPT_BASE_USE_REG_INTVAL', true);
+                    }
+            }
+        }
     }
 
     /**
@@ -571,7 +616,6 @@ abstract class Base
      *
      * @access public
      * @param string $key
-     * @internal Could, but not must, extend by the child Crypt_* class
      */
     function setKey($key)
     {
@@ -593,6 +637,10 @@ abstract class Base
      *         $hash, $salt, $count, $dkLen
      *
      *         Where $hash (default = sha1) currently supports the following hashes: see: Crypt/Hash.php
+     *     {@link https://en.wikipedia.org/wiki/Bcrypt bcypt}:
+     *         $salt, $rounds, $keylen
+     *
+     *         This is a modified version of bcrypt used by OpenSSH.
      *
      * @see Crypt/Hash.php
      * @param string $password
@@ -606,6 +654,28 @@ abstract class Base
         $key = '';
 
         switch ($method) {
+            case 'bcrypt':
+                $func_args = func_get_args();
+
+                if (!isset($func_args[2])) {
+                    return false;
+                }
+
+                $salt = $func_args[2];
+
+                $rounds = isset($func_args[3]) ? $func_args[3] : 16;
+                $keylen = isset($func_args[4]) ? $func_args[4] : $this->key_length;
+
+                $bf = new Blowfish();
+                $key = $bf->bcrypt_pbkdf($password, $salt, $keylen + $this->block_size, $rounds);
+                if (!$key) {
+                    return false;
+                }
+
+                $this->setKey(substr($key, 0, $keylen));
+                $this->setIV(substr($key, $keylen));
+
+                return true;
             default: // 'pbkdf2' or 'pbkdf1'
                 $func_args = func_get_args();
 
@@ -1105,7 +1175,7 @@ abstract class Base
                     $plaintext = '';
                     if ($this->continuousBuffer) {
                         $iv = &$this->decryptIV;
-                        $pos = &$this->buffer['pos'];
+                        $pos = &$this->debuffer['pos'];
                     } else {
                         $iv = $this->decryptIV;
                         $pos = 0;
@@ -2004,7 +2074,7 @@ abstract class Base
 
         $length = ord($text[strlen($text) - 1]);
 
-        if (!$length || $length > $this->block_size) {
+        if (!$length | ($length > $this->block_size)) {
             return false;
         }
 
@@ -2798,11 +2868,8 @@ abstract class Base
      */
     function safe_intval($x)
     {
-        switch (true) {
-            case is_int($x):
-            // PHP 5.3, per http://php.net/releases/5_3_0.php, introduced "more consistent float rounding"
-            case (php_uname('m') & "\xDF\xDF\xDF") != 'ARM':
-                return $x;
+        if (is_int($x)) {
+            return $x;
         }
         return (fmod($x, 0x80000000) & 0x7FFFFFFF) |
             ((fmod(floor($x / 0x80000000), 2) & 1) << 31);
@@ -2816,15 +2883,12 @@ abstract class Base
      */
     function safe_intval_inline()
     {
-        switch (true) {
-            case defined('PHP_INT_SIZE') && PHP_INT_SIZE == 8:
-            case (php_uname('m') & "\xDF\xDF\xDF") != 'ARM':
-                return '%s';
-                break;
-            default:
-                $safeint = '(is_int($temp = %s) ? $temp : (fmod($temp, 0x80000000) & 0x7FFFFFFF) | ';
-                return $safeint . '((fmod(floor($temp / 0x80000000), 2) & 1) << 31))';
+        if (CRYPT_BASE_USE_REG_INTVAL) {
+            return PHP_INT_SIZE == 4 ? 'intval(%s)' : '%s';
         }
+
+        $safeint = '(is_int($temp = %s) ? $temp : (fmod($temp, 0x80000000) & 0x7FFFFFFF) | ';
+        return $safeint . '((fmod(floor($temp / 0x80000000), 2) & 1) << 31))';
     }
 
     /**
@@ -2834,5 +2898,16 @@ abstract class Base
      */
     function do_nothing()
     {
+    }
+
+    /**
+     * Is the continuous buffer enabled?
+     *
+     * @access public
+     * @return boolean
+     */
+    function continuousBufferEnabled()
+    {
+        return $this->continuousBuffer;
     }
 }
