@@ -1622,4 +1622,81 @@ class Admin_model extends CI_Model
 
         return false;
     }
+    
+    public function deleteAccount($id): array
+    {
+    $user = $this->db
+        ->select('email')
+        ->where('id', $id)
+        ->get('users')
+        ->row();
+
+    if (empty($user)) {
+        return [
+            'status' => false,
+            'message' => 'User not found.'
+        ];
+    }
+
+    $account = $this->auth
+        ->select('username, gmlevel')
+        ->where('id', $id)
+        ->get('account')
+        ->row();
+
+    if (empty($account)) {
+        return [
+            'status' => false,
+            'message' => 'Account not found.'
+        ];
+    }
+
+    if ($account->gmlevel >= 6) {
+        return [
+            'status' => false,
+            'message' => 'Can not delete GM level 6 account.'
+        ];
+    }
+
+    $realm = $this->db
+        ->select('*')
+        ->get('realms')
+        ->row_array();
+
+    if (empty($realm)) {
+        return [
+            'status' => false,
+            'message' => 'Realm not found.'
+        ];
+    }
+
+    $result = $this->wowrealm->commandSoap(
+        '.account delete ' . $account->username,
+        $realm['console_username'],
+        $realm['console_password'],
+        $realm['console_hostname'],
+        $realm['console_port'],
+        $realm['emulator']
+    );
+
+    if (strpos($result, 'Account deleted') === false) {
+        return [
+            'status' => false,
+            'message' => 'Game account deletion failed.'
+        ];
+    }
+
+    $this->db
+        ->where('id', $id)
+        ->delete('users');
+
+    $this->db
+        ->where('email', $user->email)
+        ->delete('users_activation_status');
+
+    return [
+        'status' => true,
+        'message' => 'Account deleted successfully.'
+    ];
+    }
 }

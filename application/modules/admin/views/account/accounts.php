@@ -32,7 +32,8 @@
                   <td>
                     <div class="uk-flex uk-flex-left uk-flex-center@m uk-margin-small">
                       <a href="<?= base_url('admin/account/manage/'.$account->id); ?>" class="uk-button uk-button-primary uk-margin-small-right"><i class="fas fa-user-edit"></i></a>
-                      <a href="<?= base_url('admin/account/dlogs/'.$account->id); ?>" class="uk-button uk-button-primary"><i class="fas fa-donate"></i></a>
+                      <a href="<?= base_url('admin/account/dlogs/'.$account->id); ?>" class="uk-button uk-button-primary uk-margin-small-right"><i class="fas fa-donate"></i></a>
+                      <button class="uk-button uk-button-danger" onclick="confirmDelete(<?= $account->id ?>, '<?= htmlspecialchars($account->username, ENT_QUOTES) ?>')"><i class="fas fa-trash"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -51,3 +52,50 @@
         </div>
       </div>
     </section>
+
+<script>
+function confirmDelete(id, username)
+{
+    if (!confirm("Delete account " + username + " ?")) {
+        return;
+    }
+
+    $.ajax({
+        url: "<?= base_url($this->uri->segment(1).'/admin/account/delete'); ?>",
+        type: "POST",
+        dataType: "json",
+        data: {
+            id: id,
+            <?= $this->security->get_csrf_token_name(); ?>: "<?= $this->security->get_csrf_hash(); ?>"
+        },
+
+        success: function(response)
+        {
+            if (response.status) {
+                UIkit.notification({
+                    message: response.message,
+                    status: 'success'
+                });
+
+                setTimeout(function() {
+                    location.reload();
+                }, 1500);
+
+            } else {
+                UIkit.notification({
+                    message: response.message,
+                    status: 'danger'
+                });
+            }
+        },
+
+        error: function()
+        {
+            UIkit.notification({
+                message: 'Erreur AJAX lors de la suppression.',
+                status: 'danger'
+            });
+        }
+    });
+}
+</script>

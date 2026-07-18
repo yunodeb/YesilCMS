@@ -295,6 +295,17 @@ class Admin extends MX_Controller
         echo $this->admin_model->delBanAccount($id);
     }
 
+    public function deleteaccount()
+    {
+        $id = $this->input->post('id');
+
+        $result = $this->admin_model->deleteAccount($id);
+
+        header('Content-Type: application/json');
+
+        echo json_encode($result);
+    }
+
     public function grantrankaccount()
     {
         $id   = $this->input->post('id');

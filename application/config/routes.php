@@ -267,6 +267,7 @@ $route[$lang . '/admin/account/ban']           = 'admin/banaccount';
 $route[$lang . '/admin/account/unban']         = 'admin/unbanaccount';
 $route[$lang . '/admin/account/grantrank']     = 'admin/grantrankaccount';
 $route[$lang . '/admin/account/delrank']       = 'admin/delrankaccount';
+$route[$lang . '/admin/account/delete']        = 'admin/deleteaccount';
 
 /*
  *	Tickets
