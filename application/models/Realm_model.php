@@ -76,7 +76,7 @@ class Realm_model extends CI_Model
                 }
             }
 
-            if (fsockopen($host, $port, $errno, $errstr, 1.5) && $multiRealm->conn_id) {
+            if (fsockopen($host, $port, $errno, $errstr, 1.5)) {
                 $this->RealmStatus = true;
             } else {
                 $this->RealmStatus = false;
