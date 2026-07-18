@@ -148,60 +148,80 @@ class Admin_model extends CI_Model
         return true;
     }
 
-
     public function insertRankAccount($id, $gmlevel): bool
     {
-        $insert = true;
+    if ($this->auth->field_exists('SecurityLevel', 'account_access')) {
 
-        if ($this->auth->field_exists('SecurityLevel', 'account_access')) {
-            $data = array(
-                'id'            => $id,
-                'SecurityLevel' => $gmlevel,
-                'RealmID'       => '-1'
-            );
+        $this->auth
+            ->where('AccountID', $id)
+            ->update('account_access', array(
+                'SecurityLevel' => $gmlevel
+            ));
+
+    } elseif ($this->auth->field_exists('gmlevel', 'account_access')) {
+
+        $existing = $this->auth
+            ->select('RealmID')
+            ->where('id', $id)
+            ->get('account_access')
+            ->result();
+
+        if (!empty($existing)) {
+
+            foreach ($existing as $realm) {
+                $this->auth
+                    ->where('id', $id)
+                    ->where('RealmID', $realm->RealmID)
+                    ->update('account_access', array(
+                        'gmlevel' => $gmlevel
+                    ));
+            }
+
         } else {
-            if ($this->auth->field_exists('gmlevel', 'account')) {
-                $data   = array(
-                    'gmlevel' => $gmlevel,
-                );
-                $insert = false;
-            } else {
-                $data = array(
-                    'id'      => $id,
-                    'gmlevel' => $gmlevel,
-                    'RealmID' => '-1'
-                );
+
+            $realms = $this->auth
+                ->select('id')
+                ->get('realmlist')
+                ->result();
+
+            foreach ($realms as $realm) {
+                $this->auth->insert('account_access', array(
+                    'id'       => $id,
+                    'gmlevel'  => $gmlevel,
+                    'RealmID'  => $realm->id
+                ));
             }
         }
 
-        $insert
-            ? $this->auth->insert('account_access', $data)
-            : $this->auth->where('id', $id)->update(
-            'account', $data
-        );
+    } else {
 
-        return true;
+        $this->auth
+            ->where('id', $id)
+            ->update('account', array(
+                'gmlevel' => $gmlevel
+            ));
     }
 
+    return true;
+    }
+    
     public function delRankAccount($id): bool
     {
-        $delete = true;
+    $delete = true;
 
-        if ($this->auth->field_exists('gmlevel', 'account')) {
-            $data   = array(
-                'gmlevel' => 0,
-            );
-            $delete = false;
-        }
-
-        $delete
-            ? $this->auth->where('id', $id)->delete('account_access')
-            : $this->auth->where('id', $id)->update(
-            'account',
-            $data
+    if ($this->auth->field_exists('SecurityLevel', 'account_access')) {
+        $this->auth->where('AccountID', $id)->delete('account_access');
+    } elseif ($this->auth->field_exists('gmlevel', 'account_access')) {
+        $this->auth->where('id', $id)->delete('account_access');
+    } elseif ($this->auth->field_exists('gmlevel', 'account')) {
+        $data = array(
+            'gmlevel' => 0,
         );
 
-        return true;
+        $this->auth->where('id', $id)->update('account', $data);
+    }
+
+    return true;
     }
 
     public function getBanCount()
