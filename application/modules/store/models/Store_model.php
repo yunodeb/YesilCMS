@@ -169,13 +169,38 @@ class Store_model extends CI_Model
                     $this->wowrealm->commandSoap('.character level ' . $charname . ' ' . $item['command'], $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
                 } elseif ($item['type'] == 4) {
                     $this->wowrealm->commandSoap('.character rename ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 5) {
-                    $this->wowrealm->commandSoap('.character customize ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 6) {
-                    $this->wowrealm->commandSoap('.character changefaction ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 7) {
-                    $this->wowrealm->commandSoap('.character changerace ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                }
+                } elseif ($item['type'] == 8) {
+
+    foreach (preg_split('/\r\n|\r|\n/', trim($item['command'])) as $command) {
+
+        $command = trim($command);
+
+        if ($command === '') {
+            continue;
+        }
+
+        $command = str_ireplace(
+            ['{character}', '{guid}', '{account}'],
+            [$charname, $charid, $accountid],
+            $command
+        );
+
+        $command = trim($command);
+
+if ($command === '') {
+    continue;
+}
+
+        $this->wowrealm->commandSoap(
+            $command,
+            $info['console_username'],
+            $info['console_password'],
+            $info['console_hostname'],
+            $info['console_port'],
+            $info['emulator']
+        );
+    }
+}
 
                 $this->db->query("UPDATE users SET dp = (dp-$dpprice) WHERE id = $accountid");
                 $this->insertStoreLog($accountid, $charid, $item['name'], $item['type'], $item['price_type'], $dpprice, '0');
@@ -190,13 +215,38 @@ class Store_model extends CI_Model
                     $this->wowrealm->commandSoap('.character level ' . $charname . ' ' . $item['command'], $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
                 } elseif ($item['type'] == 4) {
                     $this->wowrealm->commandSoap('.character rename ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 5) {
-                    $this->wowrealm->commandSoap('.character customize ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 6) {
-                    $this->wowrealm->commandSoap('.character changefaction ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 7) {
-                    $this->wowrealm->commandSoap('.character changerace ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                }
+                } elseif ($item['type'] == 8) {
+
+    foreach (preg_split('/\r\n|\r|\n/', trim($item['command'])) as $command) {
+
+        $command = trim($command);
+
+        if ($command === '') {
+            continue;
+        }
+
+        $command = str_ireplace(
+            ['{character}', '{guid}', '{account}'],
+            [$charname, $charid, $accountid],
+            $command
+        );
+
+        $command = trim($command);
+
+if ($command === '') {
+    continue;
+}
+
+        $this->wowrealm->commandSoap(
+            $command,
+            $info['console_username'],
+            $info['console_password'],
+            $info['console_hostname'],
+            $info['console_port'],
+            $info['emulator']
+        );
+    }
+}
 
                 $this->db->query("UPDATE users SET vp = (vp-$vpprice) WHERE id = $accountid");
                 $this->insertStoreLog($accountid, $charid, $item['name'], $item['type'], $item['price_type'], '0', $vpprice);
@@ -211,13 +261,38 @@ class Store_model extends CI_Model
                     $this->wowrealm->commandSoap('.character level ' . $charname . ' ' . $item['command'], $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
                 } elseif ($item['type'] == 4) {
                     $this->wowrealm->commandSoap('.character rename ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 5) {
-                    $this->wowrealm->commandSoap('.character customize ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 6) {
-                    $this->wowrealm->commandSoap('.character changefaction ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                } elseif ($item['type'] == 7) {
-                    $this->wowrealm->commandSoap('.character changerace ' . $charname . ' ', $info['console_username'], $info['console_password'], $info['console_hostname'], $info['console_port'], $info['emulator']);
-                }
+                } elseif ($item['type'] == 8) {
+
+    foreach (preg_split('/\r\n|\r|\n/', trim($item['command'])) as $command) {
+
+        $command = trim($command);
+
+        if ($command === '') {
+            continue;
+        }
+
+        $command = str_ireplace(
+            ['{character}', '{guid}', '{account}'],
+            [$charname, $charid, $accountid],
+            $command
+        );
+
+        $command = trim($command);
+
+if ($command === '') {
+    continue;
+}
+
+        $this->wowrealm->commandSoap(
+            $command,
+            $info['console_username'],
+            $info['console_password'],
+            $info['console_hostname'],
+            $info['console_port'],
+            $info['emulator']
+        );
+    }
+}
 
                 $this->db->query("UPDATE users SET dp = (dp-$dpprice), vp = (vp-$vpprice) WHERE id = $accountid");
                 $this->insertStoreLog($accountid, $charid, $item['name'], $item['type'], $item['price_type'], $dpprice, $vpprice);

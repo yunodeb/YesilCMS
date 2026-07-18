@@ -57,16 +57,10 @@
                         } ?>><?= $this->lang->line('table_header_level'); ?></option>
                         <option value="4" <?php if ($this->admin_model->getItemSpecifyType($idlink) == 4) {
                             echo 'selected';
-                        } ?>><?= $this->lang->line('option_rename'); ?></option>
-                        <option value="5" <?php if ($this->admin_model->getItemSpecifyType($idlink) == 5) {
+                        } ?>><?= $this->lang->line('option_rename'); ?></option>                        
+                        <option value="8" <?php if ($this->admin_model->getItemSpecifyType($idlink) == 8) {
                             echo 'selected';
-                        } ?>><?= $this->lang->line('option_customize'); ?></option>
-                        <option value="6" <?php if ($this->admin_model->getItemSpecifyType($idlink) == 6) {
-                            echo 'selected';
-                        } ?>><?= $this->lang->line('option_change_faction'); ?></option>
-                        <option value="7" <?php if ($this->admin_model->getItemSpecifyType($idlink) == 7) {
-                            echo 'selected';
-                        } ?>><?= $this->lang->line('option_change_race'); ?></option>
+} ?>>Command</option>
                       </select>
                     </div>
                   </div>
@@ -115,18 +109,36 @@
                   </div>
                 </div>
               </div>
-              <div class="uk-margin-small">
-                <label class="uk-form-label"><?= $this->lang->line('placeholder_command'); ?></label>
-                <div class="uk-form-controls">
-                  <div class="uk-inline uk-width-1-1">
-                    <input class="uk-input" type="text" id="item_command" value="<?= $this->admin_model->getItemSpecifyCommand($idlink); ?>" required>
-                  </div>
-                </div>
-              </div>
-              <div class="uk-margin-small">
-                <button class="uk-button uk-button-primary uk-width-1-1" id="button_upitem" type="submit"><i class="fas fa-sync-alt"></i> <?= $this->lang->line('button_save'); ?></button>
-              </div>
-            <?= form_close(); ?>
+<div class="uk-margin-small">
+    <label class="uk-form-label" id="command_label">
+    <?= $this->lang->line('placeholder_command'); ?>
+</label>
+
+    <div class="uk-form-controls">
+        <textarea 
+    class="uk-textarea" 
+    id="item_command" 
+    rows="5"
+    spellcheck="false"
+    placeholder=".learn all_myclass {character}
+.send money {character} &quot;VMaNGOS Shop&quot; &quot;Enjoy your gold!&quot; 100000"><?= htmlspecialchars($this->admin_model->getItemSpecifyCommand($idlink), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+<div id="command_help" class="uk-text-meta uk-margin-small-top" style="display:none;">
+    <i class="fas fa-info-circle"></i>
+    Enter one command per line.<br>
+    Example:<br>
+    <code>.learn all_myclass {character}</code><br>
+    <code>.send money {character} "VMaNGOS Shop" "Enjoy your gold!" 100000</code><br>
+    <code>{character}</code> will be automatically replaced with the character name.
+</div>
+    </div>
+</div>
+<div class="uk-margin-small">
+    <button class="uk-button uk-button-primary uk-width-1-1" id="button_upitem" type="submit">
+        <i class="fas fa-sync-alt"></i> <?= $this->lang->line('button_save'); ?>
+    </button>
+</div>
+<?= form_close(); ?>
           </div>
         </div>
       </div>
@@ -135,6 +147,91 @@
     <script>
     var csrfName = "<?= $this->security->get_csrf_token_name() ?>";
     var csrfHash = "<?= $this->security->get_csrf_hash() ?>";
+
+$(document).ready(function() {
+
+function updateCommandHelp() {
+
+    let type = $('#item_type').val();
+
+    if (type == '0' || type == '4') {
+
+        $('#item_command').closest('.uk-margin-small').hide();
+        $('#item_command').removeAttr('required');
+        $('#item_command').val('');
+        $('#command_help').hide();
+
+    } else {
+
+        $('#item_command').closest('.uk-margin-small').show();
+        $('#item_command').attr('required', true);
+
+        if (type == '8') {
+
+            $('#command_label').text('Command');
+
+            $('#item_command').attr(
+                'placeholder',
+                '.learn all_myclass {character}\n.send money {character} "VMaNGOS Shop" "Enjoy your gold!" 100000'
+            );
+
+            $('#command_help').show();
+
+        } else if (type == '2') {
+
+            $('#command_label').text('Gold');
+
+            $('#item_command').attr(
+                'placeholder',
+                'Example: 100000'
+            );
+
+            $('#command_help').hide();
+
+} else if (type == '3') {
+
+    $('#command_label').text('Level');
+
+    $('#item_command').attr(
+        'placeholder',
+        'Example: 60'
+    );
+
+    $('#command_help').hide();
+
+} else if (type == '1') {
+
+    $('#command_label').text('Item ID');
+
+    $('#item_command').attr(
+        'placeholder',
+        'Example: 12345'
+    );
+
+    $('#command_help').hide();
+
+} else {
+
+            $('#command_label').text('Command');
+
+            $('#item_command').attr(
+                'placeholder',
+                'Enter command here...'
+            );
+
+            $('#command_help').hide();
+        }
+    }
+
+}
+
+    $('#item_type').on('change', function() {
+        updateCommandHelp();
+    });
+
+    updateCommandHelp();
+
+});
 
       function UpdateItemForm(e) {
         e.preventDefault();
@@ -149,6 +246,43 @@
         var dp_price = $.trim($('#item_dp_price').val());
         var vp_price = $.trim($('#item_vp_price').val());
         var command = $.trim($('#item_command').val());
+
+        if(type == '4'){
+    command = '';
+}
+
+if(type == 1 || type == 2 || type == 3){
+
+    if(command == '' || !Number.isInteger(Number(command)) || command <= 0){
+
+        let errorMessage = 'Value must be a valid number';
+
+        if(type == 1)
+            errorMessage = 'Item ID required';
+
+        if(type == 2)
+            errorMessage = 'Gold amount required';
+
+        if(type == 3)
+            errorMessage = 'Level required';
+
+        $.amaran({
+          'theme': 'awesome error',
+          'content': {
+            title: '<?= $this->lang->line('notification_title_error'); ?>',
+            message: errorMessage,
+            info: '',
+            icon: 'fas fa-times-circle'
+          },
+          'delay': 2500,
+          'position': 'top right',
+          'inEffect': 'slideRight',
+          'outEffect': 'slideRight'
+        });
+
+        return false;
+    }
+}
         if(name == ''){
           $.amaran({
             'theme': 'awesome error',
@@ -197,6 +331,25 @@
           });
           return false;
         }
+
+if(type == 8 && command == ''){
+
+    $.amaran({
+      'theme': 'awesome error',
+      'content': {
+        title: '<?= $this->lang->line('notification_title_error'); ?>',
+        message: 'Command required',
+        info: '',
+        icon: 'fas fa-times-circle'
+      },
+      'delay': 2500,
+      'position': 'top right',
+      'inEffect': 'slideRight',
+      'outEffect': 'slideRight'
+    });
+
+    return false;
+}
         $.ajax({
           url:"<?= base_url($lang.'/admin/store/item/update'); ?>",
           method:"POST",
